@@ -16,7 +16,25 @@ const brent={title:'Brent Bishop — Confidential',symbol:'◈',items:[['Party i
 // Randomize each question once per playthrough; keep it stable when revisiting.
 function shuffleOrder(n){const a=Array.from({length:n},(_,i)=>i);for(let i=n-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 let answerOrders={};
-function orderFor(k,n){return answerOrders[k]||(answerOrders[k]=shuffleOrder(n));}
+function orderFor(k,n){
+  if(answerOrders[k])return answerOrders[k];
+  // Spread correct positions across each chamber's three locks.
+  const isFinal=k.startsWith('final-');
+  const group=isFinal?'final':k.split('-')[0];
+  const qIndex=Number(k.split('-').pop());
+  const slotsKey='slots-'+group;
+  if(!answerOrders[slotsKey]){
+    const count=isFinal?finalQs.length:3;
+    const slots=[];
+    while(slots.length<count)slots.push(...shuffleOrder(n));
+    answerOrders[slotsKey]=slots.slice(0,count);
+  }
+  const correct=isFinal?finalQs[qIndex].correct:all[Number(group)].qs[qIndex].correct;
+  const position=answerOrders[slotsKey][qIndex];
+  const other=shuffleOrder(n).filter(i=>i!==correct);
+  other.splice(position,0,correct);
+  return answerOrders[k]=other;
+}
 let state={found:{},solved:{},journal:[],room:-1,phase:0,question:0,final:0,hints:{},finished:false};
 const $=id=>document.getElementById(id);const all=[...rooms,brent];const key=(r,q)=>r+'-'+q;const doneCount=()=>Object.keys(state.solved).length;const complete=r=>[0,1,2].every(q=>state.solved[key(r,q)]);const roomName=r=>r===7?'Brent Bishop — Confidential':rooms[r].title;
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
@@ -41,6 +59,6 @@ function openFinal(){state.room=8;setScene('THE FINAL VAULT','The Conspiracy Rev
 function renderFinal(){let q=finalQs[state.final];$('main').innerHTML=`<div class="eyebrow">Master Detective • Final deduction ${state.final+1} of ${finalQs.length}</div><h2>Reconstruct the stolen truth</h2><div class="paper">${esc(q.q)}</div><div class="choices">${orderFor("final-"+state.final,q.a.length).map((j,pos)=>`<button class="btn" onclick="finalAnswer(${j})">${String.fromCharCode(65+pos)}. ${esc(q.a[j])}</button>`).join('')}</div><div id="message" role="status"></div><button class="btn small" onclick="finalHint()">✧ Request a hint</button><button class="btn small" onclick="showNotebook()">📓 Consult notebook</button>`;update();}
 function finalAnswer(j){let q=finalQs[state.final];if(j!==q.correct){$('message').innerHTML='<div class="status error">The curator would like you to believe that. But does all the evidence support it? Try again.</div>';return;}state.journal.push('FINAL DEDUCTION: '+q.note);state.final++;if(state.final===finalQs.length){state.finished=true;victory();}else{renderFinal();$('message').innerHTML='<div class="status">✦ Deduction confirmed. Another seal releases.</div>';}}
 function finalHint(){let q=finalQs[state.final],k='f'+state.final,n=state.hints[k]||0;state.hints[k]=Math.min(n+1,q.h.length);$('message').innerHTML=`<div class="status">✧ Hint ${Math.min(n+1,q.h.length)}: ${esc(q.h[Math.min(n,q.h.length-1)])}</div>`;}
-function victory(){state.room=8;setScene('THE ARCHIVE IS RESTORED','Every Choice Leaves a Trace','You followed the evidence instead of accepting an easy story.');$('main').innerHTML=`<div class="end"><div style="font-size:50px">✦ ◈ ✦</div><div class="eyebrow">Level III • Master Detective</div><h2>THE LITERARY CONSPIRACY SOLVED</h2><p>You recovered all <b>24 evidence seals</b>, investigated seven literary works and Brent Bishop’s journey, and exposed the curator’s deception.</p><p>The stolen truth: <b>Human stories are shaped by choices, circumstances, consequences, change, and connection. No single easy answer captures them all.</b></p><p class="lock">✧ ARCHIVE RESTORED • VICTORY CONFIRMED ✧</p><p><b>Show this victory screen to your teacher to claim your reward.</b></p><button class="btn" onclick="showNotebook()">Review the evidence</button><button class="btn" onclick="if(confirm('Restart this game? All progress will be cleared.')){answerOrders={};state={found:{},solved:{},journal:[],room:-1,phase:0,question:0,final:0,hints:{},finished:false};showIntro()}">Play again</button></div>`;update();}
+function victory(){state.room=8;setScene('THE ARCHIVE IS RESTORED','Every Choice Leaves a Trace','You followed the evidence instead of accepting an easy story.');$('main').innerHTML=`<div class="end"><div style="font-size:50px">✦ ◈ ✦</div><div class="eyebrow">Level III • Master Detective</div><h2>THE LITERARY CONSPIRACY SOLVED</h2><p>You recovered all <b>24 evidence seals</b>, investigated seven literary works and Brent Bishop’s journey, and exposed the curator’s deception.</p><p>The stolen truth: <b>Human stories are shaped by choices, circumstances, consequences, change, and connection. No single easy answer captures them all.</b></p><p class="lock">✧ ARCHIVE RESTORED • VICTORY CONFIRMED ✧</p><p><b>Show this victory screen to your teacher to claim your reward.</b></p><button class="btn" onclick="showNotebook()">Review the evidence</button><button class="btn" onclick="if(confirm('Restart this game? All progress will be cleared.')){answerOrders={};answerOrders={};state={found:{},solved:{},journal:[],room:-1,phase:0,question:0,final:0,hints:{},finished:false};showIntro()}">Play again</button></div>`;update();}
 showIntro();
 </script></body></html>
